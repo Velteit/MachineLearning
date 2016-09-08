@@ -58,14 +58,15 @@ clusters
         marker =
             Marker(
                 color = colors.[i], //sprintf "rgb(%d, %d, %d)" ((int32 cluster.Centroid.X)) (int32 cluster.Centroid.Y) (int32 cluster.Centroid.Z),
-                size = 5.,
+                opacity = 0.8,
+                size = 10.,
                 symbol = "circle"
             )
     )
 )
 |> List.append (
     clusters 
-    |> List.map(fun cluster ->
+    |> List.mapi(fun i cluster ->
         Scatter3d(
             x = [|cluster.Centroid.X|],
             y = [|cluster.Centroid.Y|],
@@ -75,7 +76,7 @@ clusters
                 Marker(
                     color = colors.[i],//sprintf "rgb(%d, %d, %d)" (int32 cluster.Centroid.X) (int32 cluster.Centroid.Y) (int32 cluster.Centroid.Z),
                     //size = (cluster.Points |> List.maxBy (distance cluster.Centroid) |> distance Point<float>.Zero) * 10.,
-                    size = 10.,
+                    size = 15.,
                     symbol = "circle",
                     opacity = 0.5
                 )

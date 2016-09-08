@@ -52,7 +52,8 @@
     <Content Include="Google.DataTable.Net.Wrapper.XML">
       <Paket>True</Paket>
     </Content>
-    <None Include="MachineLearning.fsx" />
+    <None Include="K-Means.fsx" />
+    <None Include="K-NN.fsx" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
