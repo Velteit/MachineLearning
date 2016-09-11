@@ -1,24 +1,31 @@
-﻿type BinaryTree<'T> =
-    | Node of Left: BinaryTree<'T> * Value : 'T * Right : BinaryTree<'T>
-    | Leaf of 'T
-    | Null
+﻿#load "packages/FsLab/FsLab.fsx"
+open Deedle
+open FSharp.Data
+open XPlot.GoogleCharts
+open XPlot.GoogleCharts.Deedle
+open XPlot.Plotly
 
 let rgen = System.Random()
-let data = 
-    [for _ in 1..rgen.Next(500) -> rgen.Next(0, 100)]
 
-let createTree (data : 'T list) = 
-    let data' = data |> List.sort |> List.distinct |> List.toArray
-    let rec iter (data: 'T []) l r = 
-        if l = r 
-        then
-            if l < data.Length then Leaf(data.[l]) else Null
-        else
-            let mean = (l + r) / 2
-            let leftLeaf = iter data l mean
-            let rightLeaf = iter data (mean + 1) r
-            Node(leftLeaf, data.[mean], rightLeaf)
-    iter data' 0 (data'.Length)
+type Data<'C,'V> = 
+    {Class: 'C; Value: 'V}
 
-createTree data
-data |> List.sort 
+let inline knn<'C,'V when 'C: equality and 'C: comparison> (data: Data<'C,'V> []) (value: 'V) k (d: 'V -> 'V -> float) =
+    data 
+    |> Array.Parallel.map(fun data -> d value data.Value, data.Class)
+    |> Array.sortBy fst
+    |> Array.take k
+    |> Array.groupBy snd
+    |> Array.minBy fst
+    |> fun (_, pair) -> {Class = snd pair.[0]; Value = value}
+
+let set = [|for i in 1..100 -> {Class = i; Value = rgen.NextDouble()*(10.* float i)}|]
+
+set 
+|> Array.groupBy (fun d -> d.Class) 
+|> Array.sortBy fst
+|> Array.map (fun (k, v) -> k, v.Length)
+
+let value = rgen.NextDouble()*100.
+
+knn set value 5 (fun a b -> abs (a - b) )
