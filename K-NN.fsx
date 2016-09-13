@@ -29,3 +29,10 @@ set
 let value = rgen.NextDouble()*100.
 
 knn set value 5 (fun a b -> abs (a - b) )
+
+
+type KdTree<'K, 'V> = 
+    | Node of key: 'K * value: 'V * left: KdTree<'K,'V> * right: KdTree<'K,'V>
+    | Leaf of values: 'V list
+    | NullLeaf
+

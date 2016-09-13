@@ -6,4 +6,14 @@ group Main
 source https://www.nuget.org/api/v2
 
 nuget FAKE
-nuget FsLab 
+nuget Deedle
+nuget Deedle.RPlugin
+nuget FSharp.Charting
+nuget FSharp.Core
+nuget FSharp.Data
+nuget FsLab
+nuget XPlot.GoogleCharts
+nuget XPlot.GoogleCharts.Deedle
+nuget XPlot.Plotly
+nuget MathNet.Numerics
+nuget MathNet.Numerics.FSharp
