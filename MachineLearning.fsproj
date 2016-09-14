@@ -69,6 +69,9 @@
     <None Include="BigData.fsx" />
     <Compile Include="LazyList.fs" />
     <None Include="Kaggle.Iris.fsx" />
+    <Compile Include="Utils.CSV.fs" />
+    <Compile Include="Utils.Math.fs" />
+    <Compile Include="Utils.Misc.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
