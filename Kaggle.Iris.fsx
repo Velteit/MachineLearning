@@ -77,10 +77,9 @@ let irisMean t (el : Iris []) =
 let d (i1: Iris) (i2: Iris) = 
     sqrt (((i1.SepalWidthCm - i2.SepalWidthCm)^2) + ((i1.SepalLengthCm - i2.SepalLengthCm)^2) + ((i1.PetalLengthCm - i2.PetalLengthCm)^2) + ((i1.PetalWidthCm - i2.PetalWidthCm)^2))
 
-let predictType ts (clusters: Centroid<Iris> []) = 
+let findNearest ts (clusters: Centroid<Iris> []) = 
     clusters 
     |> Array.minBy(fun c -> d ts c.Center)
-    |> fun i -> i.Center.Type
 
 let clusters = 
     [|  createCluster trainingSetosa (irisMean IrisSetosa); 
@@ -88,5 +87,4 @@ let clusters =
         createCluster trainingVersicolor (irisMean IrisVersicolor)|] 
 clusters |> Array.map(fun c -> c.Center) 
 
-
-[for ts in data -> predictType ts clusters = ts.Type, predictType ts clusters, ts] |> List.filter (fun (f,_,_) -> not f)
+[for ts in data -> findNearest ts clusters |> fun cluster -> cluster.Center.Type = ts.Type, ts, cluster] |> List.filter (fun (f,_,_) -> not f)

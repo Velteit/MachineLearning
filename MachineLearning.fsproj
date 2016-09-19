@@ -72,6 +72,7 @@
     <Compile Include="Utils.CSV.fs" />
     <Compile Include="Utils.Math.fs" />
     <Compile Include="Utils.Misc.fs" />
+    <None Include="CV.fsx" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />

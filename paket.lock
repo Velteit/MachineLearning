@@ -8,6 +8,10 @@ NUGET
       R.NET.Community.FSharp (>= 1.6.4)
       RProvider (>= 1.1.13)
     DynamicInterop (0.7.4)
+    EmguCV (3.1.0.1)
+      OpenTK (>= 1.1.2225)
+      OpenTK.GLControl (>= 1.1.2225)
+      ZedGraph (>= 5.1.5)
     FAKE (4.39.1)
     FSharp.Charting (0.90.14)
     FSharp.Core (4.0.0.1)
@@ -40,6 +44,9 @@ NUGET
       FSharp.Core (>= 3.1.2.5)
       MathNet.Numerics (3.12)
     Newtonsoft.Json (9.0.1)
+    OpenTK (1.1.2349.61993)
+    OpenTK.GLControl (1.1.2349.61993)
+      OpenTK (>= 1.1.2349.61993)
     R.NET.Community (1.6.5)
       DynamicInterop (0.7.4)
     R.NET.Community.FSharp (1.6.5)
@@ -59,3 +66,4 @@ NUGET
     XPlot.Plotly (1.3.1)
       Http.fs
       Newtonsoft.Json
+    ZedGraph (5.1.7)
