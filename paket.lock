@@ -16,6 +16,7 @@ NUGET
     FSharp.Charting (0.90.14)
     FSharp.Core (4.0.0.1)
     FSharp.Data (2.3.1)
+    FSharp.Quotations.Evaluator (1.0.7)
     FsLab (1.0.1)
       Deedle (1.2.5)
       Deedle.RPlugin (1.2.5)

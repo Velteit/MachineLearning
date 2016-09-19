@@ -1,4 +1,6 @@
-﻿#load "packages/FsLab/FsLab.fsx"
+﻿#r @"packages/FSharp.Quotations.Evaluator/lib/net40/FSharp.Quotations.Evaluator.dll"
+
+#load "packages/FsLab/FsLab.fsx"
 #load "Utils.Math.fs"
 #load "Utils.CSV.fs"
 #load "Utils.Misc.fs"
