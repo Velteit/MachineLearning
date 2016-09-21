@@ -70,6 +70,7 @@
   </Target>
   -->
   <ItemGroup>
+    <Compile Include="Trees.fs" />
     <Compile Include="Utils.CSV.fs" />
     <Compile Include="Utils.Misc.fs" />
     <Compile Include="Utils.Math.fs" />

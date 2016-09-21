@@ -1,15 +1,11 @@
 ﻿#r @"packages/FSharp.Quotations.Evaluator/lib/net40/FSharp.Quotations.Evaluator.dll"
 
 #load "Utils.Misc.fs"
+#load "Trees.fs"
 
-open Utils.Misc.Concurrent.CRef
+open Trees
+let rgen = System.Random()
 
-let v = cref 10
-
-let a i = async {set v ((get v) + i)}
-
-[a 1; a 2; a 3; a 4]
-|> Async.Parallel
-|> Async.RunSynchronously
-
-get v
+let set = [for _ in 1..10 -> rgen.NextDouble() * 10.]
+set |> List.distinct
+let tree =  BinaryTree.create set (fun a b -> if a = b then 0 else if a > b then 1 else -1)

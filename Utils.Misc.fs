@@ -39,5 +39,5 @@ module Concurrent =
             member internal __.Locker = locker
 
         let inline cref<'T> (value: 'T) = CRef<'T>(value)
-        let inline set (cref: CRef<'a>) value = lock cref.Locker (fun () -> cref.Value <- value)
-        let inline get (cref: CRef<'a>) = cref.Value
+        let set (cref: CRef<'a>) value = lock cref.Locker (fun () -> cref.Value <- value)
+        let get (cref: CRef<'a>) = cref.Value
