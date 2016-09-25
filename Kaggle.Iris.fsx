@@ -4,6 +4,7 @@
 #load "Utils.Math.fs"
 #load "Utils.CSV.fs"
 #load "Utils.Misc.fs"
+#load "Neural.fs"
 
 open Deedle
 
@@ -20,6 +21,7 @@ open Utils.Math
 open Utils.CSV
 open Utils.Misc
 
+open MathNet.Numerics.LinearAlgebra
 let rgen = Random(10201)
 let datasetPath = Path.Combine(__SOURCE_DIRECTORY__, "datasets", "iris", "iris.csv")
 
@@ -70,6 +72,10 @@ let trainingVersicolor = versicolor |> Array.take 30
 
 let data = Array.concat [setosa |> Array.skip 30;  virginica |> Array.skip 30; versicolor |> Array.skip 30] |> Array.shuffle
 
+let setosaNeuron = 
+    Neural.NeuralV2.create ([rgen.NextDouble(); rgen.NextDouble(); rgen.NextDouble(); rgen.NextDouble()] |> DenseVector.ofList) (rgen.NextDouble()) <@ fun x -> tanh x @> "x"
+
+
 
 let irisMean t (el : Iris []) = 
     let count = el |> Array.length |> float in
@@ -90,3 +96,4 @@ let clusters =
 clusters |> Array.map(fun c -> c.Center) 
 
 [for ts in data -> findNearest ts clusters |> fun cluster -> cluster.Center.Type = ts.Type, ts, cluster] |> List.filter (fun (f,_,_) -> not f)
+

@@ -64,15 +64,41 @@ module NeuralNetwork =
             | Output(neurons)       -> neurons |> Neuron.forward result
         iter 0 input
 
-    let inline learn a input expected network = 
-        let result = network |> forward input
-        
-        let rec backPropaganation result (network: NeuralNetwork) li = 
-            if li > 0 then
-                network.[li] <- 
-                    match network.[li] with
-                    | Hidden(neurons)     -> Hidden(neurons |> Array.Parallel.mapi(fun i neuron -> neuron))
-                    | Output(neuron)      -> 
-                backPropaganation result network (li - 1)
-            
-        backPropaganation result network (network.Length - 1)
+//    let inline learn a input expected network = 
+//        let result = network |> forward input
+//        
+//        let rec backPropaganation result (network: NeuralNetwork) li = 
+//            if li > 0 then
+//                network.[li] <- 
+//                    match network.[li] with
+//                    | Hidden(neurons)     -> Hidden(neurons |> Array.Parallel.mapi(fun i neuron -> neuron))
+//                    | Output(neuron)      -> 
+//                backPropaganation result network (li - 1)
+//            
+//        backPropaganation result network (network.Length - 1)
+
+
+module NeuralV2 = 
+    type Neuron = 
+        Neuron of float Vector * (float -> float) * (float -> float)
+
+    let inline create weights bias func pName = 
+        let weights = weights |> Vector.insert 0 bias in
+            let f = func |> Utils.Misc.Expr.toLambda  in
+                let f' = func |> Utils.Math.Differential.d pName |> Utils.Misc.Expr.toLambda  in
+                    Neuron(weights, f, f')
+
+    let inline forward x = function
+        | Neuron(weights, func, _) -> (x |> Vector.insert 0 1. |> weights.DotProduct ) |> func
+
+    let inline forwardMatrix (mx: float Matrix) (neuron: Neuron) =
+        mx |> Matrix.mapRows(fun i vx -> DenseVector.create 1 (forward vx neuron))
+
+    let inline learn (expected: float Vector) (input: float Matrix) (alpha, costf, epsilon) (neuron: Neuron) = 
+        let rec gdc i neuron = 
+            if costf (forward (input.Row i) neuron) expected < epsilon then 
+                neuron
+            else 
+                let (w,f,f') = neuron |> function | Neuron(w, f, f') -> w, f, f'
+                Neuron(w - (input.Row i) |> Vector.map(fun x -> alpha* f' x), f, f') |> gdc (i + 1)
+        gdc 0 neuron 
