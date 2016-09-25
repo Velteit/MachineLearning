@@ -21,7 +21,14 @@ open Utils.Math
 open Utils.CSV
 open Utils.Misc
 
+open System.IO
+open MathNet.Numerics
 open MathNet.Numerics.LinearAlgebra
+open MathNet.Numerics.Providers.LinearAlgebra.Mkl
+
+Control.NativeProviderPath <- __SOURCE_DIRECTORY__ +  @"\packages\MathNet.Numerics.MKL.Win-x64\build\x64"
+Control.UseNativeMKL()
+
 let rgen = Random(10201)
 let datasetPath = Path.Combine(__SOURCE_DIRECTORY__, "datasets", "iris", "iris.csv")
 
@@ -44,12 +51,8 @@ type IrisType =
 
 type Iris =
     {Type : IrisType; SepalLengthCm: float; SepalWidthCm: float; PetalLengthCm: float; PetalWidthCm: float;}
-
-type Centroid<'T> = 
-    {Center: 'T; Elements: 'T []}
-
-let createCluster elements mean = 
-    {Center = mean elements; Elements = elements}
+    member this.ToVector() = 
+        [|this.SepalLengthCm; this.SepalWidthCm; this.PetalLengthCm; this.PetalWidthCm|] |> DenseVector.ofArray
 
 let dataset =
     readCSV datasetPath ',' (fun text ->
@@ -58,7 +61,6 @@ let dataset =
                 PetalLengthCm = float text.[3]
                 PetalWidthCm = float text.[4]
                 Type = text.[5]  |> IrisType.Parse })
-    
 let (setosa,virginica,versicolor)= 
     dataset 
     |> Array.groupBy (fun iris -> iris.Type)
@@ -67,28 +69,31 @@ let (setosa,virginica,versicolor)=
                       grouped |> Array.find (fst >> ((=) IrisType.IrisVersicolor)) |> snd
 
 let trainingSetosa = setosa |> Array.take 30
-let trainingViriginica = virginica |> Array.take 30
+let trainingVirginica = virginica |> Array.take 30
 let trainingVersicolor = versicolor |> Array.take 30
+
+let trainingData = Array.concat [|trainingSetosa; trainingVersicolor; trainingVirginica|]
 
 let data = Array.concat [setosa |> Array.skip 30;  virginica |> Array.skip 30; versicolor |> Array.skip 30] |> Array.shuffle
 
-let irisMean t (el : Iris []) = 
-    let count = el |> Array.length |> float in
-        el |> Array.fold (fun (sl,sw,pl,pw) i -> sl + i.SepalLengthCm, sw + i.SepalWidthCm, pl + i.PetalLengthCm, pw + i.PetalWidthCm) (0.,0.,0.,0. )
-        |> fun (sl,sw,pl,pw) -> { Type = t; SepalLengthCm = sl/count; SepalWidthCm = sw/count; PetalLengthCm = pl/count; PetalWidthCm = pw/count}
+let createNeuron alpha data itype =
+    let weights = [rgen.NextDouble(); rgen.NextDouble(); rgen.NextDouble(); rgen.NextDouble()] |> DenseVector.ofList
+    let expected = data |> Array.Parallel.map (fun iris -> if iris.Type = itype then 1. else -1.) |> DenseVector.ofArray
+    let input = data |> Array.Parallel.map (fun iris -> iris.ToVector()) |> List.ofArray |> DenseMatrix.ofRows
+    Neural.NeuralV2.create (weights) (rgen.NextDouble()) <@ fun x -> tanh x @> "x"
+    |> Neural.NeuralV2.learn expected input (alpha, (fun yh y -> ((yh - y) |> Vector.map(fun r -> pown r 2) |> Vector.sum) * 0.5), 0.001) 
 
-let d (i1: Iris) (i2: Iris) = 
-    sqrt (((i1.SepalWidthCm - i2.SepalWidthCm)^2) + ((i1.SepalLengthCm - i2.SepalLengthCm)^2) + ((i1.PetalLengthCm - i2.PetalLengthCm)^2) + ((i1.PetalWidthCm - i2.PetalWidthCm)^2))
+let setosaNeuron = 
+    createNeuron 0.001 trainingData IrisSetosa
 
-let findNearest ts (clusters: Centroid<Iris> []) = 
-    clusters 
-    |> Array.minBy(fun c -> d ts c.Center)
+data |> Array.Parallel.map(fun iris -> iris.Type, setosaNeuron |> Neural.NeuralV2.forward (iris.ToVector()))
 
-let clusters = 
-    [|  createCluster trainingSetosa (irisMean IrisSetosa); 
-        createCluster trainingViriginica (irisMean IrisVirginica);
-        createCluster trainingVersicolor (irisMean IrisVersicolor)|] 
-clusters |> Array.map(fun c -> c.Center) 
+let versicolorNeuron = 
+    createNeuron 0.001 trainingData IrisVersicolor
 
-[for ts in data -> findNearest ts clusters |> fun cluster -> cluster.Center.Type = ts.Type, ts, cluster] |> List.filter (fun (f,_,_) -> not f)
+let virginicaNeuron = 
+    createNeuron 0.001 trainingData IrisVirginica
 
+
+let v = [1.; 2.; 3.; 4.] |> DenseVector.ofList
+v.PointwiseMultiply(v).DotProduct(v)

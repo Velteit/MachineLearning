@@ -64,15 +64,53 @@ module NeuralNetwork =
             | Output(neurons)       -> neurons |> Neuron.forward result
         iter 0 input
 
-    let inline learn a input expected network = 
-        let result = network |> forward input
-        
-        let rec backPropaganation result (network: NeuralNetwork) li = 
-            if li > 0 then
-                network.[li] <- 
-                    match network.[li] with
-                    | Hidden(neurons)     -> Hidden(neurons |> Array.Parallel.mapi(fun i neuron -> neuron))
-                    | Output(neuron)      -> 
-                backPropaganation result network (li - 1)
-            
-        backPropaganation result network (network.Length - 1)
+//    let inline learn a input expected network = 
+//        let result = network |> forward input
+//        
+//        let rec backPropaganation result (network: NeuralNetwork) li = 
+//            if li > 0 then
+//                network.[li] <- 
+//                    match network.[li] with
+//                    | Hidden(neurons)     -> Hidden(neurons |> Array.Parallel.mapi(fun i neuron -> neuron))
+//                    | Output(neuron)      -> 
+//                backPropaganation result network (li - 1)
+//            
+//        backPropaganation result network (network.Length - 1)
+
+
+module NeuralV2 = 
+    //TODO Custom differential -> Math.NET Symbolics
+    type Neuron = 
+        Neuron of float Vector * (float -> float) * (float -> float)
+
+    let inline create weights bias func pName = 
+        let weights = weights |> Vector.insert 0 bias in
+            let f = func |> Utils.Misc.Expr.toLambda  in
+                let f' = func |> Utils.Math.Differential.d pName |> Utils.Misc.Expr.toLambda  in
+                    Neuron(weights, f, f')
+
+    let inline forward x = function
+        | Neuron(weights, func, _) -> (x |> Vector.insert 0 1. |> weights.DotProduct ) |> func
+
+    let inline forwardMatrix (mx: float Matrix) (neuron: Neuron) =
+        mx |> Matrix.toRowSeq |> Seq.map (fun vx -> forward vx neuron) |> DenseVector.ofSeq
+
+
+    let rec learn (Y: float Vector) (X: float Matrix) (alpha, costf, epsilon: float) (neuron: Neuron) = 
+        let rec gdc neuron = 
+            let Yh = forwardMatrix X neuron
+            if (costf Yh Y) < epsilon then 
+                neuron
+            else 
+                let (w, f, f') = neuron |> function | Neuron(w, f, f') -> w, f, f'
+                let Yd = (Yh - Y) 
+                let XT = X |> Matrix.insertCol 0 (DenseVector.create X.RowCount 1.)
+                let w' = 
+                    XT
+                    |> Matrix.transpose
+                    |> Matrix.toRowSeq 
+                    // alpha * Σ ((yh - y) * f'(wx) * x) = alpha * (Yh - Y) * f' (W * XT) * x
+                    |> Seq.map (fun x -> Yd.PointwiseMultiply(x).DotProduct(XT * w |> Vector.map f') * alpha) 
+                    |> DenseVector.ofSeq
+                Neuron(w - w', f, f') |> gdc 
+        gdc neuron 

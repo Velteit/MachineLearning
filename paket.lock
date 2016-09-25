@@ -44,6 +44,7 @@ NUGET
     MathNet.Numerics.FSharp (3.12)
       FSharp.Core (>= 3.1.2.5)
       MathNet.Numerics (3.12)
+    MathNet.Numerics.MKL.Win-x64 (2.1)
     Newtonsoft.Json (9.0.1)
     OpenTK (1.1.2349.61993)
     OpenTK.GLControl (1.1.2349.61993)
