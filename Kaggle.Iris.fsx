@@ -72,6 +72,8 @@ let trainingVersicolor = versicolor |> Array.take 30
 
 let data = Array.concat [setosa |> Array.skip 30;  virginica |> Array.skip 30; versicolor |> Array.skip 30] |> Array.shuffle
 
+
+
 let irisMean t (el : Iris []) = 
     let count = el |> Array.length |> float in
         el |> Array.fold (fun (sl,sw,pl,pw) i -> sl + i.SepalLengthCm, sw + i.SepalWidthCm, pl + i.PetalLengthCm, pw + i.PetalWidthCm) (0.,0.,0.,0. )

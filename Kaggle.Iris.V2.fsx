@@ -81,12 +81,14 @@ let createNeuron alpha data itype =
     let expected = data |> Array.Parallel.map (fun iris -> if iris.Type = itype then 1. else -1.) |> DenseVector.ofArray
     let input = data |> Array.Parallel.map (fun iris -> iris.ToVector()) |> List.ofArray |> DenseMatrix.ofRows
     Neural.NeuralV2.create (weights) (rgen.NextDouble()) <@ fun x -> tanh x @> "x"
-    |> Neural.NeuralV2.learn expected input (alpha, (fun yh y -> ((yh - y) |> Vector.map(fun r -> pown r 2) |> Vector.sum) * 0.5), 0.001) 
+    |> Neural.NeuralV2.learn expected input (alpha, (fun yh y -> ((yh - y) |> Vector.map(fun r -> pown r 2) |> Vector.sum) * 0.5), 0.01) 
 
 let setosaNeuron = 
-    createNeuron 0.001 trainingData IrisSetosa
+    createNeuron 0.01 trainingData IrisSetosa 
 
-data |> Array.Parallel.map(fun iris -> iris.Type, setosaNeuron |> Neural.NeuralV2.forward (iris.ToVector()))
+data 
+|> Array.Parallel.map(fun iris -> iris.Type, setosaNeuron |> Neural.NeuralV2.forward (iris.ToVector()))
+|> Array.filter(fun (l,r) -> r > 0.)
 
 let versicolorNeuron = 
     createNeuron 0.001 trainingData IrisVersicolor

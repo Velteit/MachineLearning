@@ -80,6 +80,7 @@
     <None Include="K-NN.fsx" />
     <None Include="BigData.fsx" />
     <None Include="Kaggle.Iris.fsx" />
+    <None Include="Kaggle.Iris.V2.fsx" />
     <None Include="CV.fsx" />
     <None Include="Temp.fsx" />
     <Content Include="Google.DataTable.Net.Wrapper.XML">
