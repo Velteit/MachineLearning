@@ -26,6 +26,8 @@ open MathNet.Numerics
 open MathNet.Numerics.LinearAlgebra
 open MathNet.Numerics.Providers.LinearAlgebra.Mkl
 
+open Neural
+
 Control.NativeProviderPath <- __SOURCE_DIRECTORY__ +  @"\packages\MathNet.Numerics.MKL.Win-x64\build\x64"
 Control.UseNativeMKL()
 
@@ -72,30 +74,45 @@ let trainingSetosa = setosa |> Array.take 30
 let trainingVirginica = virginica |> Array.take 30
 let trainingVersicolor = versicolor |> Array.take 30
 
-let trainingData = Array.concat [|trainingSetosa; trainingVersicolor; trainingVirginica|]
+let trainingData = Array.concat [|trainingSetosa; trainingVersicolor; trainingVirginica|] |> Array.shuffle
 
-let data = Array.concat [setosa |> Array.skip 30;  virginica |> Array.skip 30; versicolor |> Array.skip 30] |> Array.shuffle
+let data = dataset |> Array.shuffle
 
 let createNeuron alpha data itype =
     let weights = [rgen.NextDouble(); rgen.NextDouble(); rgen.NextDouble(); rgen.NextDouble()] |> DenseVector.ofList
-    let expected = data |> Array.Parallel.map (fun iris -> if iris.Type = itype then 1. else -1.) |> DenseVector.ofArray
+    let expected = data |> Array.Parallel.map (fun iris -> if iris.Type = itype then 1. else 0.) |> SparseVector.ofArray
     let input = data |> Array.Parallel.map (fun iris -> iris.ToVector()) |> List.ofArray |> DenseMatrix.ofRows
-    Neural.NeuralV2.create (weights) (rgen.NextDouble()) <@ fun x -> tanh x @> "x"
-    |> Neural.NeuralV2.learn expected input (alpha, (fun yh y -> ((yh - y) |> Vector.map(fun r -> pown r 2) |> Vector.sum) * 0.5), 0.01) 
+    Neuron.create (weights) (rgen.NextDouble()) <@ fun x -> 1./(1. + exp (-2.*x))  @> "x"
+    |> Neuron.learn expected input (alpha, (fun yh y -> ((yh - y) |> Vector.map(fun r -> pown r 2) |> Vector.sum) * 0.5), 0.1) 
 
+
+Neuron.log <- printfn "%s"
+
+#time "on"
 let setosaNeuron = 
-    createNeuron 0.01 trainingData IrisSetosa 
+    createNeuron 0.1 trainingData IrisSetosa 
+#time "off"
 
 data 
-|> Array.Parallel.map(fun iris -> iris.Type, setosaNeuron |> Neural.NeuralV2.forward (iris.ToVector()))
-|> Array.filter(fun (l,r) -> r > 0.)
+|> Array.Parallel.map(fun iris -> iris.Type, setosaNeuron |> Neuron.forward (iris.ToVector()))
+|> Array.filter(fun (l,r) -> l = IrisSetosa && r < 0.)
 
 let versicolorNeuron = 
-    createNeuron 0.001 trainingData IrisVersicolor
+    createNeuron (0.41) trainingData IrisVersicolor
+
+data 
+|> Array.Parallel.map(fun iris -> iris.Type, versicolorNeuron |> Neuron.forward (iris.ToVector()))
+|> Array.filter(fun (l,r) -> r > 0.)
 
 let virginicaNeuron = 
-    createNeuron 0.001 trainingData IrisVirginica
+    createNeuron 0.1 trainingData IrisVirginica
+data
+|> Array.Parallel.map(fun iris -> let v = iris.ToVector() in iris.Type, virginicaNeuron |> Neuron.forward (v))
+|> Array.filter(fun (i,vr) -> i = IrisVirginica && vr < 0.)
 
+data
+|> Array.Parallel.map(fun iris -> let v = iris.ToVector() in iris.Type, virginicaNeuron |> Neuron.forward (v), setosaNeuron |> Neuron.forward v)
+|> Array.filter(fun (i,vr,s) -> i = IrisSetosa || i = IrisVirginica)
 
 let v = [1.; 2.; 3.; 4.] |> DenseVector.ofList
 v.PointwiseMultiply(v).DotProduct(v)
