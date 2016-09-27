@@ -27,9 +27,10 @@ open MathNet.Numerics.LinearAlgebra
 open MathNet.Numerics.Providers.LinearAlgebra.Mkl
 
 open Neural
-
-Control.NativeProviderPath <- __SOURCE_DIRECTORY__ +  @"\packages\MathNet.Numerics.MKL.Win-x64\build\x64"
-Control.UseNativeMKL()
+//MKL
+//Control.NativeProviderPath <- __SOURCE_DIRECTORY__ +  @"\packages\MathNet.Numerics.MKL.Win-x64\build\x64"
+Control.NativeProviderPath <- __SOURCE_DIRECTORY__ +  @"\packages\MathNet.Numerics.OpenBLAS.WIN\build\x64"
+Control.UseNativeOpenBLAS()
 
 let rgen = Random(10201)
 let datasetPath = Path.Combine(__SOURCE_DIRECTORY__, "datasets", "iris", "iris.csv")
@@ -74,7 +75,9 @@ let trainingSetosa = setosa |> Array.take 30
 let trainingVirginica = virginica |> Array.take 30
 let trainingVersicolor = versicolor |> Array.take 30
 
-let trainingData = Array.concat [|trainingSetosa; trainingVersicolor; trainingVirginica|] |> Array.shuffle
+let trainingData = 
+    Array.concat [|trainingSetosa; trainingVersicolor; trainingVirginica|] 
+    |> Array.shuffle
 
 let data = dataset |> Array.shuffle
 
@@ -85,27 +88,37 @@ let createNeuron alpha data itype =
     Neuron.create (weights) (rgen.NextDouble()) <@ fun x -> 1./(1. + exp (-2.*x))  @> "x"
     |> Neuron.learn expected input (alpha, (fun yh y -> ((yh - y) |> Vector.map(fun r -> pown r 2) |> Vector.sum) * 0.5), 0.1) 
 
+let createNeuronBatch alpha batchSize data itype =
+    let weights = [rgen.NextDouble(); rgen.NextDouble(); rgen.NextDouble(); rgen.NextDouble()] |> DenseVector.ofList
+    let expected = data |> Array.Parallel.map (fun iris -> if iris.Type = itype then 1. else 0.) |> SparseVector.ofArray
+    let input = data |> Array.Parallel.map (fun iris -> iris.ToVector()) |> List.ofArray |> DenseMatrix.ofRows
+    Neuron.create (weights) (rgen.NextDouble()) <@ fun x -> 1./(1. + exp (-2.*x))  @> "x"
+    |> Neuron.batchLearn expected input batchSize (alpha, (fun yh y -> ((yh - y) |> Vector.map(fun r -> pown r 2) |> Vector.sum) * 0.5), 0.1) 
+
 
 Neuron.log <- printfn "%s"
+Neuron.log <- ignore
 
 #time "on"
-let setosaNeuron = 
-    createNeuron 0.1 trainingData IrisSetosa 
+let (setosaNeuron, setotsaErrors) = 
+    createNeuron 0.15 trainingData IrisSetosa 
 #time "off"
 
 data 
 |> Array.Parallel.map(fun iris -> iris.Type, setosaNeuron |> Neuron.forward (iris.ToVector()))
 |> Array.filter(fun (l,r) -> l = IrisSetosa && r < 0.)
 
-let versicolorNeuron = 
-    createNeuron (0.41) trainingData IrisVersicolor
+
+let (versicolorNeuron, versicolorErrors) = 
+    createNeuronBatch 0.5 70 trainingData IrisVersicolor
 
 data 
 |> Array.Parallel.map(fun iris -> iris.Type, versicolorNeuron |> Neuron.forward (iris.ToVector()))
 |> Array.filter(fun (l,r) -> r > 0.)
 
-let virginicaNeuron = 
-    createNeuron 0.1 trainingData IrisVirginica
+let (virginicaNeuron, virginicaErrors) = 
+    createNeuron 0.15 trainingData IrisVirginica
+
 data
 |> Array.Parallel.map(fun iris -> let v = iris.ToVector() in iris.Type, virginicaNeuron |> Neuron.forward (v))
 |> Array.filter(fun (i,vr) -> i = IrisVirginica && vr < 0.)
@@ -116,3 +129,10 @@ data
 
 let v = [1.; 2.; 3.; 4.] |> DenseVector.ofList
 v.PointwiseMultiply(v).DotProduct(v)
+
+setotsaErrors 
+|> List.rev
+|> Series.ofValues
+|> Chart.Line
+
+[8; 6; 5; 4; 4; 4; 4; 4; 4; 3; 1; 1; 1; 1; 1; 1; 1; 1; 1; 1] |> List.sum
