@@ -1,18 +1,27 @@
 ﻿module Neural
 
+open System
+
+open Microsoft.FSharp.Quotations
+open Microsoft.FSharp.Quotations.Patterns
+
 open MathNet.Numerics.LinearAlgebra
 open Microsoft.FSharp.Quotations
 
 open Utils.Misc
 open Utils.Math.Differential
 
+
 //TODO Custom differential -> Math.NET Symbolics
 type Neuron = 
-    {Weights: Vector<float>; Activation: float -> float; Activation': float -> float }
+    {Weights: Vector<float>; [<NonSerialized>] Activation: float -> float; [<NonSerialized>] Activation': float -> float; Func: Expr<float -> float>}
 
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix )>]
 module Neuron = 
+    open System.Runtime.Serialization.Formatters.Binary
+    open System.IO
+
     let mutable log = fun (msg:string) -> ignore msg
     
     let inline normalize min max c = 
@@ -21,7 +30,8 @@ module Neuron =
     let inline create weights bias func pName = 
         {   Weights = weights |> Vector.insert 0 bias; 
             Activation = func |> Utils.Misc.Expr.toLambda; 
-            Activation' = func |> Utils.Math.Differential.d pName |> Utils.Misc.Expr.toLambda   }
+            Activation' = func |> Utils.Math.Differential.d pName |> Utils.Misc.Expr.toLambda;
+            Func = func   }
 
     let inline forward x neuron = 
         (x |> Vector.insert 0 1. |> neuron.Weights.DotProduct ) |> neuron.Activation
@@ -98,6 +108,20 @@ module Neuron =
                     |> DenseVector.ofSeq                
                 gdc {neuron with Weights = neuron.Weights - w'} (error::errors)
         gdc neuron []
+
+
+    let inline save path (neuron: Neuron) = 
+        let formatter = BinaryFormatter()
+        use stream = new FileStream(path, FileMode.OpenOrCreate, FileAccess.Write)
+        formatter.Serialize(stream, neuron)
+        stream.Close()
+
+    let inline load path = 
+        let formatter = BinaryFormatter()
+        use stream = new FileStream(path, FileMode.Open, FileAccess.Read)
+        let neuron = formatter.Deserialize(stream) :?> Neuron
+        let pName = match neuron.Func with | Lambda(var, _) -> var.Name | _ -> "x"
+        {neuron with Activation = neuron.Func |> Utils.Misc.Expr.toLambda; Activation' = neuron.Func |> Utils.Math.Differential.d pName |> Utils.Misc.Expr.toLambda;}
 
 type Layer = 
     | Input of Neuron []

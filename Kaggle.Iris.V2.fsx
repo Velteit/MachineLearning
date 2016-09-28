@@ -99,13 +99,21 @@ let createNeuronBatch alpha batchSize data itype =
 Neuron.log <- printfn "%s"
 Neuron.log <- ignore
 
+let setosaPath = Path.Combine(__SOURCE_DIRECTORY__, "setosa.bin")
+let virginicaPath = Path.Combine(__SOURCE_DIRECTORY__, "virginica.bin")
+//setosaNeuron |> Neuron.save path
+//let test = Neuron.load path
+
 #time "on"
 let (setosaNeuron, setotsaErrors) = 
     createNeuron 0.15 trainingData IrisSetosa 
 #time "off"
 
+
+
+
 data 
-|> Array.Parallel.map(fun iris -> iris.Type, setosaNeuron |> Neuron.forward (iris.ToVector()))
+|> Array.Parallel.map(fun iris -> iris.Type, test |> Neuron.forward (iris.ToVector()))
 |> Array.filter(fun (l,r) -> l = IrisSetosa && r < 0.)
 
 
