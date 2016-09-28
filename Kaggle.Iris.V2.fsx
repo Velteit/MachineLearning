@@ -101,6 +101,8 @@ Neuron.log <- ignore
 
 let setosaPath = Path.Combine(__SOURCE_DIRECTORY__, "setosa.bin")
 let virginicaPath = Path.Combine(__SOURCE_DIRECTORY__, "virginica.bin")
+let versicolorPath = Path.Combine(__SOURCE_DIRECTORY__, "versicolor.bin")
+
 //setosaNeuron |> Neuron.save path
 //let test = Neuron.load path
 
@@ -113,7 +115,7 @@ let (setosaNeuron, setotsaErrors) =
 
 
 data 
-|> Array.Parallel.map(fun iris -> iris.Type, test |> Neuron.forward (iris.ToVector()))
+|> Array.Parallel.map(fun iris -> iris.Type, setosaNeuron |> Neuron.forward (iris.ToVector()))
 |> Array.filter(fun (l,r) -> l = IrisSetosa && r < 0.)
 
 
@@ -123,9 +125,15 @@ let (versicolorNeuron, versicolorErrors) =
 data 
 |> Array.Parallel.map(fun iris -> iris.Type, versicolorNeuron |> Neuron.forward (iris.ToVector()))
 |> Array.filter(fun (l,r) -> r > 0.)
-
-let (virginicaNeuron, virginicaErrors) = 
-    createNeuron 0.15 trainingData IrisVirginica
+let thread = System.Threading.Thread(fun () -> 
+    let (virginicaNeuron, virginicaErrors) = 
+        createNeuron 15. trainingData IrisVirginica
+    let virginicaPath = Path.Combine(__SOURCE_DIRECTORY__, "virginica.bin")
+    virginicaNeuron |> Neuron.save virginicaPath
+)
+thread.Start()
+thread.Abort()
+    //createNeuronBatch 1.9 50 trainingData IrisVirginica
 
 data
 |> Array.Parallel.map(fun iris -> let v = iris.ToVector() in iris.Type, virginicaNeuron |> Neuron.forward (v))
@@ -133,7 +141,7 @@ data
 
 data
 |> Array.Parallel.map(fun iris -> let v = iris.ToVector() in iris.Type, virginicaNeuron |> Neuron.forward (v), setosaNeuron |> Neuron.forward v)
-|> Array.filter(fun (i,vr,s) -> i = IrisSetosa || i = IrisVirginica)
+|> Array.filter(fun (i, vr, s) -> i = IrisSetosa || i = IrisVirginica)
 
 let v = [1.; 2.; 3.; 4.] |> DenseVector.ofList
 v.PointwiseMultiply(v).DotProduct(v)
