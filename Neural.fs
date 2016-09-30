@@ -12,22 +12,22 @@ open Utils.Misc
 open Utils.Math.Differential
 
 
-//TODO Custom differential -> Math.NET Symbolics
+//TODO Array functions to array module
+//TODO Matrix rows array to module
 type Neuron = 
     {Weights: Vector<float>; [<NonSerialized>] Activation: float -> float; [<NonSerialized>] Activation': float -> float; Func: Expr<float -> float>}
 
+let inline costf (yh: float Vector) (y: float Vector) = 
+    MathNet.Numerics.Distance.SSD(yh,y)
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix )>]
 module Neuron = 
     open System.Runtime.Serialization.Formatters.Binary
     open System.IO
-
-    let mutable log = fun (msg:string) -> ignore msg
     
     let inline normalize min max c = 
         (c - min)/(max - min)
-    let inline costf (yh: float Vector) (y: float Vector) = 
-        MathNet.Numerics.Distance.SSD(yh,y)
+
 
     let inline create weights bias func pName = 
         {   Weights = weights |> Vector.insert 0 bias; 
@@ -64,7 +64,7 @@ module Neuron =
         |> Array.Parallel.map (fun vx -> let vx = vx |> DenseVector.ofArray in forward vx neuron) 
         |> DenseVector.ofSeq
 
-    let inline learn (Y: float Vector) (X: float Matrix) (alpha, epsilon: float) (neuron: Neuron) = 
+    let inline learn (alpha, epsilon: float) (X: float Matrix) (Y: float Vector) (neuron: Neuron) = 
         let f' = neuron.Activation'
         let max = X |> Matrix.fold max (X.[0,0]) 
         let min = X |> Matrix.fold min (X.[0,0])
@@ -89,7 +89,7 @@ module Neuron =
                 gdc {neuron with Weights = neuron.Weights - w'} (error::errors)
         gdc neuron []
 
-    let inline batchLearn (Y: float Vector) (X: float Matrix) batchSize (alpha, epsilon: float) (neuron: Neuron) = 
+    let inline batchLearn (alpha, batchSize, epsilon: float) (X: float Matrix) (Y: float Vector) (neuron: Neuron) = 
         let f' = neuron.Activation'
         let Y = Y.[0..batchSize]
         let X = X.[0..batchSize, 0..]
@@ -115,7 +115,7 @@ module Neuron =
                 gdc {neuron with Weights = neuron.Weights - w'} (error::errors)
         gdc neuron []
 
-    let inline onlineLearning (error: float) (x: float Vector) alpha neuron = 
+    let inline onlineLearning alpha (x: float Vector) (error: float) neuron = 
         let f' = neuron.Activation'
         let max = x |> Vector.fold max (x.[0]) 
         let min = x |> Vector.fold min (x.[0])
@@ -139,7 +139,7 @@ module Neuron =
         let pName = match neuron.Func with | Lambda(var, _) -> var.Name | _ -> "x"
         {neuron with Activation = neuron.Func |> Utils.Misc.Expr.toLambda; Activation' = neuron.Func |> Utils.Math.Differential.d pName |> Utils.Misc.Expr.toLambda;}
 
-type Layer = Layer of Neuron []
+type Layer = Neuron []
     
 
 type NeuralNetwork = Layer []
@@ -148,20 +148,54 @@ type NeuralNetwork = Layer []
 module NeuralNetwork = 
 
     let inline create hiddenLayers output : NeuralNetwork = 
-        let hiddens = hiddenLayers |> Array.Parallel.map(Layer)
-        let output = Layer(output)
-        [| hiddens; [|output|] |] |> Array.concat
+        [| hiddenLayers; [|output|] |] |> Array.concat
 
-    let rec private forward (input : float Vector) (network: NeuralNetwork) i results = 
+    let rec private forwardPropagation (input : float Vector) (network: NeuralNetwork) i results = 
         if i < network.Length then
-            match network.[i] with
-            | Layer(layer) -> 
-                let result = layer |> Array.Parallel.map(Neuron.forward input) |> DenseVector.ofArray
-                forward result network (i + 1) (result::results)
+            let layer = network.[i] 
+            let result = layer |> Array.Parallel.map(Neuron.forward input) |> DenseVector.ofArray
+            forwardPropagation result network (i + 1) (result::results)
         else 
-            results.Head, results
+            results.Head, results |> Array.ofList
 
-    let inline forwardPropagation input network = 
-        forward input network 0 [] |> fst
+    let mapInPlace<'T> (projection: 'T -> 'T) (array: 'T []) = 
+        for i=0 to array.Length - 1 do
+            array.[i] <- projection array.[i]
 
-    let inline private backPropaganation errors layer
+    let mapiInPlace<'T> (projection: int -> 'T -> 'T) (array: 'T []) = 
+        for i=0 to array.Length - 1 do
+            array.[i] <- projection i array.[i]
+
+    let parallelMapInPlace (projection: 'T -> 'T) (array: 'T []) = 
+        System.Threading.Tasks.Parallel.For(0, array.Length - 1, fun i -> array.[i] <- projection array.[i]) |> ignore
+
+    let parallelMapiInPlace (projection: int -> 'T -> 'T) (array: 'T []) = 
+        System.Threading.Tasks.Parallel.For(0, array.Length - 1, fun i -> array.[i] <- projection i array.[i]) |> ignore
+
+    let inline  forward input network = 
+        forwardPropagation input network 0 [] |> fst
+
+    let inline private learnLayer (alpha, epsilon) (inputs: float Vector []) (errors: float []) (layer: Layer) = 
+        let learn i = if errors.[i] > epsilon then (Neuron.onlineLearning alpha inputs.[i] errors.[i]) else id
+        layer |> parallelMapiInPlace (fun i neuron -> neuron |>  learn i)
+
+    let inline learn (alpha, epsilon) (X: float Matrix) (Y: float Vector) network = 
+        let rec inner i prevD = 
+            if i < network.Length then
+                let layer = network.[i]
+                
+                 
+                let d = (Yh.[i] - Y.[i]) * ()
+                let x = Xs.[i]
+        let Yh, Xs = 
+            X 
+            |> Matrix.toRowArrays 
+            |> Array.Parallel.map(fun x -> 
+                network 
+                |> forwardPropagation x 0 []) 
+            |> fun result -> result |> Array.Parallel.map fst, result |> Array.collect snd
+        if costf Yh Y < epsilon then
+            network
+        else 
+            for i=network.Length-1 to 0 do
+                
