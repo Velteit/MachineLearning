@@ -19,7 +19,7 @@ module Expr =
     open FSharp.Quotations.Evaluator
 
     let inline toLambda<'T> (expr: Expr) =
-        expr |> QuotationEvaluator.CompileUntyped :?> 'T
+        expr |>Microsoft.FSharp.Linq.RuntimeHelpers.LeafExpressionConverter.EvaluateQuotation :?> 'T
 
 
 module Combinators = 

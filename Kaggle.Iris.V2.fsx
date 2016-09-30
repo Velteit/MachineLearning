@@ -79,6 +79,7 @@ let trainingData =
     Array.concat [|trainingSetosa; trainingVersicolor; trainingVirginica|] 
     |> Array.shuffle
 
+trainingData |> Array.map(fun iris -> iris.Type)
 let data = dataset |> Array.shuffle
 
 let createNeuron alpha data itype =
@@ -86,7 +87,7 @@ let createNeuron alpha data itype =
     let expected = data |> Array.Parallel.map (fun iris -> if iris.Type = itype then 1. else 0.) |> SparseVector.ofArray
     let input = data |> Array.Parallel.map (fun iris -> iris.ToVector()) |> List.ofArray |> DenseMatrix.ofRows
     Neuron.create (weights) (rgen.NextDouble()) <@ fun x -> 1./(1. + exp (-2.*x))  @> "x"
-    |> Neuron.learn expected input (alpha, (fun yh y -> ((yh - y) |> Vector.map(fun r -> pown r 2) |> Vector.sum) * 0.5), 0.1) 
+    |> Neuron.learn expected input (alpha, (fun yh y -> ((yh - y) |> Vector.fold(fun s r -> s + pown r 2) 0.) * 0.5), 0.1) 
 
 let createNeuronBatch alpha batchSize data itype =
     let weights = [rgen.NextDouble(); rgen.NextDouble(); rgen.NextDouble(); rgen.NextDouble()] |> DenseVector.ofList
@@ -96,8 +97,6 @@ let createNeuronBatch alpha batchSize data itype =
     |> Neuron.batchLearn expected input batchSize (alpha, (fun yh y -> ((yh - y) |> Vector.map(fun r -> pown r 2) |> Vector.sum) * 0.5), 0.1) 
 
 
-Neuron.log <- printfn "%s"
-Neuron.log <- ignore
 
 let setosaPath = Path.Combine(__SOURCE_DIRECTORY__, "setosa.bin")
 let virginicaPath = Path.Combine(__SOURCE_DIRECTORY__, "virginica.bin")
@@ -111,12 +110,14 @@ let (setosaNeuron, setotsaErrors) =
     createNeuron 0.15 trainingData IrisSetosa 
 #time "off"
 
-
+[rgen.NextDouble(); rgen.NextDouble(); rgen.NextDouble(); rgen.NextDouble()] |> DenseVector.ofList
+data |> Array.Parallel.map (fun iris -> if iris.Type = IrisVersicolor then 1. else 0.) |> SparseVector.ofArray
+data |> Array.Parallel.map (fun iris -> iris.ToVector()) |> List.ofArray |> DenseMatrix.ofRows
 
 
 data 
 |> Array.Parallel.map(fun iris -> iris.Type, setosaNeuron |> Neuron.forward (iris.ToVector()))
-|> Array.filter(fun (l,r) -> l = IrisSetosa && r < 0.)
+|> Array.filter(fun (l, r) -> l = IrisSetosa)
 
 
 let (versicolorNeuron, versicolorErrors) = 
@@ -125,14 +126,19 @@ let (versicolorNeuron, versicolorErrors) =
 data 
 |> Array.Parallel.map(fun iris -> iris.Type, versicolorNeuron |> Neuron.forward (iris.ToVector()))
 |> Array.filter(fun (l,r) -> r > 0.)
+
+Neuron.log <- printfn "%s"
+Neuron.log <- ignore
+
 let thread = System.Threading.Thread(fun () -> 
     let (virginicaNeuron, virginicaErrors) = 
-        createNeuron 15. trainingData IrisVirginica
+        createNeuron 0.777 (Array.concat [|trainingVirginica; trainingSetosa; trainingVersicolor|]) IrisVirginica
     let virginicaPath = Path.Combine(__SOURCE_DIRECTORY__, "virginica.bin")
     virginicaNeuron |> Neuron.save virginicaPath
 )
 thread.Start()
 thread.Abort()
+
     //createNeuronBatch 1.9 50 trainingData IrisVirginica
 
 data

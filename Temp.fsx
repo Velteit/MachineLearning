@@ -7,6 +7,8 @@ open Trees
 open System.Runtime.Serialization.Formatters.Binary
 open System.IO
 
+open Utils.Misc
+
 let rgen = System.Random()
 
 let set = [for _ in 1..10 -> rgen.NextDouble() * 10.]
@@ -18,3 +20,5 @@ let stream = new FileStream("test.bin", FileMode.Open, FileAccess.Read)
 let q = formatter.Deserialize(stream) :?> Microsoft.FSharp.Quotations.Expr<int -> int>
 stream.Close()
 stream.Dispose()
+
+(<@ fun x -> x + 1 @> |> Expr.toLambda<int -> int>) 1
