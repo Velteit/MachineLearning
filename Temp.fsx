@@ -20,5 +20,5 @@ let stream = new FileStream("test.bin", FileMode.Open, FileAccess.Read)
 let q = formatter.Deserialize(stream) :?> Microsoft.FSharp.Quotations.Expr<int -> int>
 stream.Close()
 stream.Dispose()
-
+System.Environment.OSVersion.Platform
 (<@ fun x -> x + 1 @> |> Expr.toLambda<int -> int>) 1

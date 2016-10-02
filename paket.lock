@@ -44,6 +44,7 @@ NUGET
     MathNet.Numerics.FSharp (3.12)
       FSharp.Core (>= 3.1.2.5)
       MathNet.Numerics (3.12)
+    MathNet.Numerics.MKL.Linux-x64 (2.0)
     MathNet.Numerics.MKL.Win-x64 (2.1)
     MathNet.Numerics.OpenBLAS.Win (0.2)
     Newtonsoft.Json (9.0.1)

@@ -9,5 +9,6 @@ nuget FAKE
 nuget FsLab
 nuget EmguCV
 nuget FSharp.Quotations.Evaluator
+nuget MathNet.Numerics.MKL.Linux-x64
 nuget MathNet.Numerics.MKL.Win-x64
 nuget MathNet.Numerics.OpenBLAS.Win
