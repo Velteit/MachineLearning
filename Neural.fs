@@ -182,22 +182,26 @@ module NeuralNetwork =
     | Hidden(layer)     -> Hidden(layer |> Array.Parallel.mapi (fun i neuron -> neuron |>  learn i))
     | Output(layer)     -> Output(layer |> Array.Parallel.mapi (fun i neuron -> neuron |>  learn i))
     
-
-  let rec learn (alpha, epsilon) (X: float Vector) (Y: float Vector) (network: NeuralNetwork) =
+    //  TODO Rewrite. comprehend the formula 
+    // δ(OUT) = (yh - y)*f'(s)
+    // δ(HID) = f'(s) * Σ(k)(δ_j*w_kj) k ϵ Child neurons
+    // Δw_ij = - α * δ_j * x_i
+    // ε
+  (*let rec learn (alpha, epsilon) (X: float Vector) (Y: float Vector) (network: NeuralNetwork) =
     let Yh, Xs =
       forwardPropagation X network 0 []
-
+    let se w errors = 
+      w + (errors |> Array.sum)
+    let dW i (neuron: Neuron) x errors = 
+      x * se (neuron |> Neuron.weight i) errors
     let rec inner i errors =
       if i > 1 then
         let layer = network.[i]
         network.[i] <- learnLayer (alpha, epsilon) Xs.[i] errors layer
-        let se w = errors |> Array.zip w |> Array.fold (fun s (e, w) -> s + e * w) 0.
-        let dW i (neurons: Neuron[]) x = 
-            x * se (neurons |> Array.Parallel.map(Neuron.weight i))
         let xs = Xs.[i]
         let fs' = network.[i - 1] |> neurons |> Array.map(Neuron.f')
         let currentNeurons = neurons layer 
-        inner (i - 1) (fs' |> Array.mapi (fun i f -> dW i currentNeurons (f xs.[i]) ))
+        inner (i - 1) (fs' |> Array.mapi (fun i f -> dW i currentNeurons. (f xs.[i]) errors))
       else 
         network
 
@@ -205,4 +209,4 @@ module NeuralNetwork =
         network
     else
         inner (network.Length - 1) ((Yh - Y) |> Vector.toArray) 
-        |> learn (alpha, epsilon) X Y
+        |> learn (alpha, epsilon) X Y *)

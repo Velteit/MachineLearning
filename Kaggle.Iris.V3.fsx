@@ -74,7 +74,7 @@ trainingData |> Array.map(fun iris -> iris.Type)
 let data = dataset |> Array.shuffle
 
 let hiddens = 
-    [|1..3|] 
+    [|1..1|] 
     |> Array.Parallel.map(fun _ -> 
         [|1..4|] |> Array.map(fun _ -> let weights = [1..4] |> List.map (fun _ -> rgen.NextDouble()) |> DenseVector.ofList in Neuron.create weights (rgen.NextDouble()) <@ fun x -> 1./(1. + exp (-2.*x)) @> "x"))
 
@@ -86,10 +86,11 @@ let outputs =
 let itype it (iris: Iris) = if it = iris.Type then 1.0 else 0.0 
 
 let rec learn (input: Iris []) i network =
-  if i > input.Length then 
+  if i < input.Length then 
+    printfn "%d" i
     let x = input.[i].ToVector()
     let y = [|itype IrisSetosa input.[i]; itype IrisVersicolor input.[i]; itype IrisVirginica input.[i];|] |> DenseVector.ofArray
-    learn input (i + 1) (network |> NeuralNetwork.learn (0.15, 0.1) x y )
+    learn input (i + 1) (network |> NeuralNetwork.learn (0.95, 0.1) x y )
   else 
     network
 
@@ -97,5 +98,5 @@ let rec learn (input: Iris []) i network =
 let network = NeuralNetwork.createWithHiddens 4 hiddens outputs |> learn (trainingData) 0
 #time "off"
 
-let iris = data.[0]
-network |> NeuralNetwork.forward (iris.ToVector())
+let iris = data.[1]
+data |> Array.map(fun iris -> network |> NeuralNetwork.forward (iris.ToVector()))
