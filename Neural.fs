@@ -25,6 +25,8 @@ module Neuron =
   open System.Runtime.Serialization.Formatters.Binary
   open System.IO
 
+  open Utils.Misc
+
   let inline normalize min max c =
     (c - min)/(max - min)
 
@@ -50,6 +52,12 @@ module Neuron =
     |> Matrix.toRowArrays
     |> Array.Parallel.map (fun vx -> let vx = vx |> DenseVector.ofArray in forward vx neuron)
     |> DenseVector.ofSeq
+
+  let inline weight j (neuron: Neuron) = 
+    neuron.Weights.[j]
+
+  let inline f (neuron: Neuron) = neuron.Activation
+  let inline f' (neuron: Neuron) = neuron.Activation
 
   let inline learn (alpha, epsilon: float) (X: float Matrix) (Y: float Vector) (neuron: Neuron) =
     let f' = neuron.Activation'
@@ -122,23 +130,43 @@ module Neuron =
     use stream = new FileStream(path, FileMode.Open, FileAccess.Read)
     let neuron = formatter.Deserialize(stream) :?> Neuron
     let pName = match neuron.Func with | Lambda(var, _) -> var.Name | _ -> "x"
-    {neuron with Activation = neuron.Func |> Utils.Misc.Expr.toLambda; Activation' = neuron.Func |> Utils.Math.Differential.d pName |> Utils.Misc.Expr.toLambda;}
+    {neuron with Activation = neuron.Func |> Expr.compile; Activation' = neuron.Func |> Utils.Math.Differential.d pName |> Utils.Misc.Expr.compile ;}
 
-type Layer = Neuron []
+type Layer =
+    | Input of Neuron []
+    | Hidden of Neuron []
+    | Output of Neuron []
 
 
 type NeuralNetwork = Layer []
+    
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix )>]
 module NeuralNetwork =
 
-  let inline create hiddenLayers output : NeuralNetwork =
-    [| hiddenLayers; [|output|] |] |> Array.concat
+  let neurons = function | Input(l) -> l | Hidden(l) -> l | Output(l) -> l
+
+  let inline neuron l i (network: NeuralNetwork) = 
+    match network.[l] with
+    | Input(layer)  -> layer.[i]
+    | Hidden(layer) -> layer.[i]
+    | Output(layer) -> layer.[i]
+    
+  let inline weight l i j (network: NeuralNetwork) = 
+    network |> neuron l i |> fun neuron -> neuron.Weights.[j]
+
+  let inline createWithHiddens inputCount (hiddenLayers: Neuron [][]) (output : Neuron []) : NeuralNetwork =
+    let input = Array.create inputCount (Neuron.identity 1)  |> Input
+    [| [|input|]; (hiddenLayers |> Array.Parallel.map Hidden); [|Output(output)|] |] |> Array.concat
 
   let rec private forwardPropagation (input : float Vector) (network: NeuralNetwork) i results =
     if i < network.Length then
       let layer = network.[i]
-      let result = layer |> Array.Parallel.map(Neuron.forward input) |> DenseVector.ofArray
+      let result =
+        match layer with 
+        | Input(layer)    -> input
+        | Hidden(layer)   -> layer |> Array.Parallel.map(Neuron.forward input) |> DenseVector.ofArray
+        | Output(layer)   -> layer |> Array.Parallel.map(Neuron.forward input) |> DenseVector.ofArray
       forwardPropagation result network (i + 1) (result::results)
     else
       results.Head, results |> Array.ofList
@@ -147,26 +175,34 @@ module NeuralNetwork =
   let inline  forward input network =
     forwardPropagation input network 0 [] |> fst
 
-  let inline private learnLayer (alpha, epsilon) (inputs: float Vector []) (errors: float []) (layer: Layer) =
-    let learn i = if errors.[i] > epsilon then (Neuron.onlineLearning alpha inputs.[i] errors.[i]) else id
-    layer |> Array.Parallel.mapiInPlace (fun i neuron -> neuron |>  learn i)
+  let inline private learnLayer (alpha, epsilon) (inputs: float Vector) (errors: float []) layer =
+    let learn i = if errors.[i] > epsilon then (Neuron.onlineLearning alpha inputs errors.[i]) else id
+    match layer with 
+    | Input(_) as il    -> il
+    | Hidden(layer)     -> Hidden(layer |> Array.Parallel.mapi (fun i neuron -> neuron |>  learn i))
+    | Output(layer)     -> Output(layer |> Array.Parallel.mapi (fun i neuron -> neuron |>  learn i))
+    
 
-  let inline learn (alpha, epsilon) (X: float Matrix) (Y: float Vector) network =
-    let rec inner i prevD =
-      if i < network.Length then
-        let layer = network.[i]
-        let d = (Yh.[i] - Y.[i]) * ()
-        let x = Xs.[i]
+  let rec learn (alpha, epsilon) (X: float Vector) (Y: float Vector) (network: NeuralNetwork) =
     let Yh, Xs =
-      X
-      |> Matrix.toRowArrays
-      |> Array.Parallel.map(fun x ->
+      forwardPropagation X network 0 []
+
+    let rec inner i errors =
+      if i > 1 then
+        let layer = network.[i]
+        network.[i] <- learnLayer (alpha, epsilon) Xs.[i] errors layer
+        let se w = errors |> Array.zip w |> Array.fold (fun s (e, w) -> s + e * w) 0.
+        let dW i (neurons: Neuron[]) x = 
+            x * se (neurons |> Array.Parallel.map(Neuron.weight i))
+        let xs = Xs.[i]
+        let fs' = network.[i - 1] |> neurons |> Array.map(Neuron.f')
+        let currentNeurons = neurons layer 
+        inner (i - 1) (fs' |> Array.mapi (fun i f -> dW i currentNeurons (f xs.[i]) ))
+      else 
         network
-        |> forwardPropagation x 0 [])
-      |> fun result ->
-        result |> Array.Parallel.map fst,
-        result |> Array.collect snd
-    if costf Yh Y < epsilon then
-      network
+
+    if costf Yh Y < epsilon then 
+        network
     else
-      for i=network.Length-1 to 0 do
+        inner (network.Length - 1) ((Yh - Y) |> Vector.toArray) 
+        |> learn (alpha, epsilon) X Y

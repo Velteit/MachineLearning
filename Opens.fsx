@@ -25,8 +25,10 @@ let baseName = "MathNet.Numerics"
 let path = combine [|__SOURCE_DIRECTORY__; "packages"|]
 
 if Directory.Exists(combine [|path; baseName + ".OpenBLAS."+ os |]) then
+  printfn "Using OpenBLAS"
   Control.NativeProviderPath <- combine [|path; baseName + ".OpenBLAS."+ os; "build"; platform |]
   Control.UseNativeOpenBLAS()
 else
+  printfn "Using MKL"
   Control.NativeProviderPath <- combine [|path; baseName + ".MKL."+ os + "-" + platform; "build"; platform |]
   Control.UseNativeMKL()

@@ -76,11 +76,13 @@
     <Compile Include="Utils.Math.fs" />
     <Compile Include="LazyList.fs" />
     <Compile Include="Neural.fs" />
+    <None Include="Opens.fsx" />
     <None Include="K-Means.fsx" />
     <None Include="K-NN.fsx" />
     <None Include="BigData.fsx" />
     <None Include="Kaggle.Iris.fsx" />
     <None Include="Kaggle.Iris.V2.fsx" />
+    <None Include="Kaggle.Iris.V3.fsx" />
     <None Include="CV.fsx" />
     <None Include="Temp.fsx" />
     <Content Include="Google.DataTable.Net.Wrapper.XML">

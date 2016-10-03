@@ -1,6 +1,5 @@
 ﻿module Utils.Misc
 
-
 module Array =
   let inline shuffle (input: 'a []) =
     let rgen = System.Random()
@@ -34,8 +33,6 @@ module Array =
 module Expr =
   open Microsoft.FSharp.Quotations
   open Microsoft.FSharp.Linq.RuntimeHelpers
-
-  open FSharp.Quotations.Evaluator
 
   let inline compile<'T> (expr: Expr) =
     expr |> LeafExpressionConverter.EvaluateQuotation :?> 'T
